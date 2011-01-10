@@ -1,0 +1,113 @@
+<!doctype html>
+
+<!--
+  ~ jquery.mb.components
+  ~ Copyright (c) 2001-2010. Matteo Bicocchi (Pupunzi); Open lab srl, Firenze - Italy
+  ~ email: info@pupunzi.com
+  ~ site: http://pupunzi.com
+  ~
+  ~ Licences: MIT, GPL
+  ~ http://www.opensource.org/licenses/mit-license.php
+  ~ http://www.gnu.org/licenses/gpl.html
+  -->
+
+<html>
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+  <title>mb.articolize</title>
+
+  <script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1/jquery.js"></script>
+  <script type="text/javascript" src="inc/jquery.mb.articolize.js"></script>
+  <style type="text/css">
+    body{
+      width:700px;
+      margin:auto;
+      padding:20px;
+    }
+    a{
+      color:#999999;
+      text-decoration:none;
+    }
+    a:hover{
+      color:#999999;
+      text-decoration:underline;
+    }
+    #renderZone{
+      font:12px/16px georgia, serif;
+      padding:10px;
+      background:#f3f3f3;
+    }
+
+    #abstractZone{
+      background:#e7e4b6;
+      margin-top:5px;
+      padding:10px;
+    }
+    .imgWrapper{
+      width:20%;
+      height:120px;
+      overflow:hidden;
+      display:inline-block;
+      cursor:pointer;
+      background:black;
+      vertical-align:top;
+    }
+    .mbImgClone{
+      -moz-box-shadow:#000 1px 1px 10px;
+      -webkit-box-shadow:#000 1px 1px 10px;
+      box-shadow:#000 1px 1px 10px;
+      position:absolute;
+      z-index:2;
+      white-space:normal;
+    }
+    .mbImgHover{
+      -moz-box-shadow:#000 1px 1px 10px;
+      -webkit-box-shadow:#000 1px 1px 10px;
+      box-shadow:#000 1px 1px 10px;
+      position:relative;
+      z-index:1;
+    }
+    pre{
+      white-space:normal;
+    }
+  </style>
+
+  <script type="text/javascript">
+
+    function render(){
+      var text=$("#htmlContent").val();
+ //     var article=$(text).mbArticolize({abstractLength:350, removeImagesFromHtml:false});
+      var article=$.mbArticolize.articolize({text:text,abstractLength:350, removeImagesFromHtml:false, simplified:$("#check").attr('checked')});
+
+      $("#renderZone").html("").append("<h2>"+article.title+"</h2>").append(article.candidate);
+      $("#abstractZone").html("");
+      $("#abstractZone").append("<h2>"+article.title+"</h2>");
+      $("#abstractZone").append(article.images.filter(function(i){return i<15}));
+      $(article.images).wrap("<div class='imgWrapper'/>");
+      $(".imgWrapper").buildArticolizeGallery();
+      $("#abstractZone").append(article.video);
+      $("#abstractZone").append(article.candidateAbstract);
+    }
+  </script>
+
+</head>
+<body class="home">
+
+
+Copy the surce of any web-page and paste it here:
+<br>
+<br>
+<textarea id="htmlContent" style="width:450px;height:250px"></textarea><br>
+<button id="renderer" onclick="render()">render</button>
+<input type="checkbox" id="check" value="simplified">simplified<br>
+
+<div id="abstractZone"></div>
+<div id="renderZone"></div>
+
+
+
+
+
+
+</body>
+</html>
