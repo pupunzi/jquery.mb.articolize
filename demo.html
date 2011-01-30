@@ -17,7 +17,7 @@
   <title>mb.articolize</title>
 
   <script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1/jquery.js"></script>
-  <script type="text/javascript" src="inc/jquery.mb.articolize.js"></script>
+  <script type="text/javascript" src="inc/jquery.mb.articolize_1.js"></script>
   <style type="text/css">
     body{
       width:700px;
@@ -43,7 +43,7 @@
       margin-top:5px;
       padding:10px;
     }
-    .imgWrapper{
+    .mbImgWrapper{
       width:20%;
       height:120px;
       overflow:hidden;
@@ -51,12 +51,14 @@
       cursor:pointer;
       background:black;
       vertical-align:top;
+        position:relative;
     }
     .mbImgClone{
       -moz-box-shadow:#000 1px 1px 10px;
       -webkit-box-shadow:#000 1px 1px 10px;
       box-shadow:#000 1px 1px 10px;
       position:absolute;
+      
       z-index:2;
       white-space:normal;
     }
@@ -77,14 +79,13 @@
     function render(){
       var text=$("#htmlContent").val();
  //     var article=$(text).mbArticolize({abstractLength:350, removeImagesFromHtml:false});
-      var article=$.mbArticolize.articolize({text:text,abstractLength:350, removeImagesFromHtml:false, simplified:$("#check").attr('checked')});
+      var article=$.mbArticolize.articolize({text:text,abstractLength:350, removeImagesFromHtml:true});
 
       $("#renderZone").html("").append("<h2>"+article.title+"</h2>").append(article.candidate);
       $("#abstractZone").html("");
       $("#abstractZone").append("<h2>"+article.title+"</h2>");
       $("#abstractZone").append(article.images.filter(function(i){return i<15}));
-      $(article.images).wrap("<div class='imgWrapper'/>");
-      $(".imgWrapper").buildArticolizeGallery();
+      $(article.images).buildArticolizeGallery();
       $("#abstractZone").append(article.video);
       $("#abstractZone").append(article.candidateAbstract);
     }
@@ -99,7 +100,6 @@ Copy the surce of any web-page and paste it here:
 <br>
 <textarea id="htmlContent" style="width:450px;height:250px"></textarea><br>
 <button id="renderer" onclick="render()">render</button>
-<input type="checkbox" id="check" value="simplified">simplified<br>
 
 <div id="abstractZone"></div>
 <div id="renderZone"></div>
