@@ -5,19 +5,18 @@
     author:"Matteo Bicocchi",
     version:"0.1",
     regexps: {
-      tagToRemove:            /title|base|br|link|style|iframe|small|script|textnode|meta|input|textarea|comment|select|option/i, //embed|object|
+      tagToRemove:            /base|iframe|script|style|meta|input|textarea|select|option/i, //embed|object|
       hasNotRelevantChildren: /<(blockquote|dl|div|img|ol|p|pre|table)/i,
       videoRe:                /http:\/\/(www\.)?(youtube|vimeo)\.com/i,
-      negativeRe:             /combx|comment|contact|foot|footer|footnote|link|media|meta|promo|related|scroll|shoutbox|sponsor|tags|widget|post|entry/i,
-      negativeImgNames:       /separator|spacer|bgnd|background|_bg|-bg|head|foot|emot|adver|line|dott|thumb|top|bottom|sidebar|blank|null|holder|btn|button|title|basket|avatar/i
+      negativeRe:             /combx|comment|contact|footer|header|footnote|link|media|socials|meta|promo|related|scroll|shoutbox|sponsor|widget|hidden|language|menu|navbar|left|leftCol|sidebar|info|sociable|share|topbar|jump|breadcrumb|leftnav|nav/i,
+      negativeImgNames:       /email|marker|main|separator|spacer|spaceball|bgnd|smile|background|_bg|-bg|head|foot|emot|adver|line|dott|thumb|top|bottom|sidebar|blank|null|holder|btn|button|title|basket|avatar|banner/i
     },
     defaults:{
       imagesPlaceHolder:null,
       text:null,
       abstractLength:300,
       removeImagesFromHtml:false,
-      baseUrl:false,
-      simplified:false
+      baseUrl:false
     },
 
     totalScore:0,
@@ -26,178 +25,180 @@
       var options={};
       jQuery.extend(options,jQuery.mbArticolize.defaults,opt);
 
-      //prevent any scripts to be executed on load
       var articleHTML="";
+      var content= options.text?options.text:this.html().clone();
 
-      if (options.text){
-        options.text = options.text
+      //prevent any scripts to be executed on load and clean the content
+      content = content
           .replace(/onload/gi,"mbOnload")
           .replace(/\<base/gi,"<mbBase")
+          .replace(/\<link/gi,"<mbLink")
+          .replace(/link\>/gi,"mbLink>")
           .replace(/onerror/gi,"mbOnerror")
           .replace(/onclick/gi,"mbOnclick")
           .replace(/onmouseover/gi,"mbOnmouseover")
           .replace(/onmouseout/gi,"mbOnmouseout")
-          .replace(/src/gi, 'mbSrc');
-        articleHTML= jQuery(options.text);
-      }else{
-        var c=this.clone();
-        c.each(function(i){
-          if (this.tagName || this.nodeType==1)
-            this.innerHTML = this.innerHTML.replace(/onload/gi,"_onload");
-        });
-        articleHTML= $(c);
-      }
+          .replace(/src=/gi, 'mbSrc=')
+          .replace(/face=/gi, 'mbface=');
 
-      var newContent=[];
-      articleHTML.each(function(i){
-        if(this.tagName && this.tagName.toLowerCase()=="title"){
-          page.title=this.innerHTML;
-        }
-        var tagname= this.tagName ? this.tagName.toLowerCase() : this.nodeType==3 ? "textnode" : "comment";
-        if (!jQuery.mbArticolize.regexps.tagToRemove.test(tagname)){
-          newContent.push(this);
+      articleHTML= jQuery(content);
+
+      var articleTitle="";
+
+      jQuery.each(articleHTML.toArray(),function(i) {
+        if(this.tagName && this.tagName.toLowerCase().search(jQuery.mbArticolize.regexps.tagToRemove) != -1){
+
+          if(this.tagName && this.tagName.toLowerCase()=="title"){
+            articleTitle=this.innerHTML;
+          }
+
+          articleHTML.splice(jQuery.inArray(this,articleHTML),1);
         }
       });
-      articleHTML= options.simplified ? articleHTML : $(newContent);
 
-      page.title= page.title ? page.title : articleHTML.find("h1:first,h2:first").eq(0).text();
-      page.video=articleHTML.find("embed, object").filter(function(){return jQuery(this).get(0).innerHTML.search(jQuery.mbArticolize.regexps.videoRe) != -1}).eq(0).clone();
-      articleHTML.find("embed, object").remove();
+      page.video=articleHTML.find("embed, object").filter(function(){return jQuery(this).get(0).innerHTML.search(jQuery.mbArticolize.regexps.videoRe) != -1}).clone();
+      articleHTML.find("embed, object").filter(function(){return jQuery(this).get(0).innerHTML.search(jQuery.mbArticolize.regexps.videoRe) == -1}).remove();
 
-      page.images= articleHTML.find("img")
-        .filter(function(){
+      var imgsURL=[];
+      var articleImages= articleHTML.find("img");
+      page.images= articleImages
+          .filter(function(){
         var img=jQuery(this);
-        var getImg=null;
-        if(img.attr("height")>150)
-          getImg=img;
-        else if((/jpg|jpeg/i).test(img.attr("mbSrc")))
-          getImg=img;
+        var getImg=img;
         if(img.attr("mbSrc") && img.attr("mbSrc").search(jQuery.mbArticolize.regexps.negativeImgNames) != -1)
           getImg=null;
+        if(img.attr("height") && img.attr("height")<100)
+          getImg=null;
+        if(img.attr('width') && (img.attr('width')<100))
+          getImg=null;
         return getImg;
-      }).clone().each(function(){
+      }).clone();
+
+      page.images.each(function() {
+
         var img=jQuery(this);
+
+        //if this image is already taken, remove it.
+        if($.inArray(img.attr("mbSrc"),imgsURL)) {
+          img.remove();
+        }
+        imgsURL.push(img.attr("mbSrc"));
+
+        img.normalizeUrl(options.baseUrl, "mbSrc");
         img.attr("src",img.attr("mbSrc"));
-        img.normalizeUrl(options.baseUrl);
-        //img.attr("onerror", "$(this).getImgPlaceHolder('"+options.imagesPlaceHolder+"');");
-        img.bind("error", function(){$(this).getImgPlaceHolder(options.imagesPlaceHolder);});
         img.css("display","none");
-        img.bind("load",function(){$(this).fadeIn(500);});
+        img.error(function(){$(this).parent(".mbImgWrapper").remove();});
+        img.load(function(){
+          if ($(this).width()<100 || $(this).height()<100) {
+            $(this).parent(".mbImgWrapper").remove();
+            return;
+          }
+          $(this).fadeIn(500);
+        });
         img.removeAttr("border").removeAttr("style").removeAttr("usemap");
       });
 
+      //clean images inside article text
+      articleImages.each(function() {
+
+        if($(this).attr("mbSrc") && $(this).attr("mbSrc").beginsWith("./")) {
+          $(this).remove();
+          return;
+        }
+
+        $(this).normalizeUrl(options.baseUrl, "mbSrc");
+        $(this).attr("src",$(this).attr("mbSrc"));
+
+      });
+
       page.candidate= articleHTML.findCandidate(options);
+
+      page.title= articleTitle;
+      page.title= page.title ? page.title : articleHTML.find("h1:first").text();
+      page.title= page.title ? page.title : page.candidate? page.candidate.find("h1:first").text():"no title";
+      page.title= page.title ? page.title : page.candidate? page.candidate.find("h2:first").text():"no title";
+
+
+      if(page.candidate) {
+        page.candidate.find('a').each(function(){
+          $(this).normalizeUrl(options.baseUrl, "href");
+        });
+      }
 
       page.candidateAbstract= page.candidate? page.candidate.getCandidateAbstract(options.abstractLength):"";
       if(page.candidate && options.removeImagesFromHtml)
         page.candidate.find("img").remove();
       return page;
     },
+
     findCandidate:function(opt){
-      var content= jQuery(this).clone();
+      var content= this;
       var candidates={};
 
-      /*SIMPLIFIED ---------------------------------------------------------------------------------------------------------------*/
-      if(opt.simplified){
-
-        var h1_h2=content.find("h1,h2");
-        var p=content.find("p").filter(function(i){return i<40 && jQuery(this).html().length>100});
-        jQuery.extend(candidates, h1_h2, p);
-
-        var bestCandidates= candidates.parent();
-        var candidate=bestCandidates.eq(0);
-        bestCandidates.each(function(){
-          var newCandidate= jQuery(this).cleanContent(opt);
-          candidate=newCandidate.text().length>candidate.text().length ? newCandidate : candidate;
-        });
-        candidate=candidate.text().length>200 ?candidate : null;
-        content.remove();
-        return candidate;
-      }
-      /*END - SIMPLIFIED ---------------------------------------------------------------------------------------------------------*/
-
-      var allParagraphs = content.find("p");
-      jQuery.mbArticolize.totalScore=0;
-
-      allParagraphs.each(function(){
-        var $paragraph=jQuery(this);
-        $paragraph.addContentScore();
+      content.find("td").each(function(){
+        var innerH=$(this).html();
+        var rep=$("<p/>").html(innerH);
+        $(this).parents("table").before(rep);
       });
 
-      var wrap=jQuery("<div/>");
-      wrap.append(content);
+      var h1_h2=content.find("h1,h2");
+      var p=content.find("p").filter(function(i){return jQuery(this).text().length>10});
+      var li_ol=content.find("li,ol").filter(function(i){return i<40 && jQuery(this).html().length>20});
 
-      candidates=wrap.find("[contentScore]").not("table,tr,td");
+      jQuery.extend(candidates,h1_h2,li_ol,p);
 
-      candidates.each(function(){
-        jQuery(this).find("[contentScore]").each(function(){
-          jQuery.mbArticolize.totalScore+=parseFloat(jQuery(this).attr("contentScore"));
-        });
+      /*
+       candidates.each(function(){
+       $(this).cleanContent(opt);
+       $(this).addContentScore();
+       });
+       */
+
+      var bestCandidates= candidates.parent();
+//        var bestCandidates= content.find("[contentScore]");
+
+      var candidate=bestCandidates.eq(0);
+      bestCandidates.each(function(){
+
+        if (jQuery.mbArticolize.regexps.negativeRe.test(jQuery(this).attr("class")))
+          return;
+
+        var newCandidate= jQuery(this).cleanContent(opt);
+
+//          console.debug(newCandidate,newCandidate.tagName(),newCandidate.attr("contentScore"));
+
+        candidate=newCandidate.text().length>candidate.text().length ? newCandidate : candidate;
+//          candidate=parseFloat(newCandidate.attr("contentScore")) > parseFloat(candidate.attr("contentScore")) ? newCandidate : candidate;
       });
-
-      var topCandidate=null;
-
-      candidates.each(function(i){
-        var el=jQuery(this);
-          var topScore=topCandidate?parseFloat(topCandidate.attr("contentScore")):0;
-          var myScore= parseFloat(jQuery(this).attr("contentScore"));
-          topCandidate=myScore>topScore?jQuery(this):topCandidate;
-      });
-
-      if(topCandidate && topCandidate.children("[contentScore]").length>1){
-        var CandidateChildren= topCandidate.children("[contentScore]");
-        var childrenTopCandidate=null;
-        if(CandidateChildren.length<4){
-          CandidateChildren.each(function(){
-            var el=$(this);
-            var canCandidate=true;
-            canCandidate= el.tagName()!="FORM" && el.find("li, ol").filter(function(){return jQuery(this).length<20 && jQuery(this).children("a").length==0});
-            if(canCandidate){
-              var topScore=childrenTopCandidate?parseFloat(childrenTopCandidate.attr("contentScore")):0;
-              var myScore= parseFloat(el.attr("contentScore"));
-              childrenTopCandidate=myScore>topScore?el:childrenTopCandidate;
-            }
-          });
-          topCandidate=childrenTopCandidate?childrenTopCandidate:topCandidate;
-        }
-      }
-      topCandidate= topCandidate || (topCandidate && topCandidate.text().length>200)?topCandidate:jQuery("<div>no extract content available</div>");
+      candidate=candidate.text().length>100 ?candidate : null;
       content.remove();
-      return topCandidate.cleanContent(opt);
+
+      return candidate;
     },
 
     cleanContent: function (opt){
       var content= this;
-      content.find('script,small,h1,h2,h3,h4,iframe,select,option,input,textarea,ol,ul,canvas,fieldset,button,br,hr').remove();
-      content.find('img[mbsrc]').each(function(){jQuery(this).attr({"onerror":"$(this).getImgPlaceHolder('"+opt.imagesPlaceHolder+"');","src":jQuery(this).attr("mbSrc"), "style":""});});//.attr("src",jQuery(this).attr("mbSrc"))
-      content.find("div,span,p,ol,li,a").filter(function(){return jQuery(this).is(":empty")||jQuery(this).html().length<10}).remove();
+      content.find('script,iframe,select,option,input,textarea,canvas,fieldset,button,table,tr,td,h1').remove();/*hr,ol,ul,li,br,table,tr,td,style*/
+      content.find("[id]").filter(function(){return jQuery.mbArticolize.regexps.negativeRe.test(jQuery(this).attr("id")) }).remove();
+      content.find("[class]").filter(function(){return jQuery.mbArticolize.regexps.negativeRe.test(jQuery(this).attr("class"))}).remove();
       content.find("[class]").removeAttr("class");
       content.find("[color]").removeAttr("color");
       content.find("[style]").removeAttr("style");
-      content.find("p").filter(function(){return jQuery(this).html().length<35;}).remove();
-      content.find("[id],[class]").filter(function(){return jQuery.mbArticolize.regexps.negativeRe.test(jQuery(this).attr("id")) || jQuery.mbArticolize.regexps.negativeRe.test(jQuery(this).attr("class"))}).remove();
+      content.find("[width]").removeAttr('width');
+      content.find("[height]").removeAttr('height');
+      content.find("[size]").removeAttr('size');
       content.find("a").attr('target','_blank');
-
-      //  transform all DIVs without nested element in P
-      var divs= content.find("DIV");
-      divs.each(function(i){
-        var node=jQuery(this).get(0);
-        var $node=jQuery(this);
-        if(node.innerHTML.search(jQuery.mbArticolize.regexps.hasNotRelevantChildren) === -1){
-          var content=$node.html();
-          var newContent= jQuery("<p/>").html(content);
-          divs.splice(i,1,newContent);
-        }
-      });
+      content.find("div,p").filter(function(){return jQuery(this).is(":empty")}).remove();/*ol,li,*/
 
       return content;
     },
 
     addContentScore:function () {
-      var node = jQuery(this);
-      var parent = node.parent()?node.parent():node;
+      var node = this;
+      var parent = node.parent();
       var content= node.html();
-      var contentScore=node.attr("contentScore")>0?parseFloat(node.attr("contentScore")):0;
+      var contentScore= node.attr("contentScore") && node.attr("contentScore")>0?parseFloat(node.attr("contentScore")):0;
+
       switch(parent.tagName()) {
         case 'DIV':
           contentScore += 5;
@@ -232,41 +233,49 @@
       }
 
       /* For every li containing a link remove 5 points */
-      contentScore += node.tagName()=="DIV"?jQuery(content).find("img").length*5:0;
+      contentScore += node.tagName()=="DIV"?node.find("img").length*5:0;
       /* For every 100 characters in this paragraph, add another point. Up to 5 points. */
       contentScore += Math.min(Math.floor(node.text().length / 100));//, 5
+
       /* Add points for any commas within this paragraph */
-      contentScore += content.split(',').length;
+      contentScore += content.split(',').length*5;
       contentScore += parent.siblings("h2").length>0?10:0;
 
       node.attr("contentScore", parseFloat(contentScore));
+
       var parentCS=0;
+
       parent.children("[contentScore]").each(function(){
         parentCS+= parseFloat(jQuery(this).attr("contentScore"));
       });
+
       parent.attr("contentScore",parentCS);
-      var grandParent= parent.parent();
+      var grandParent= parent.parent()? parent.parent():parent;
       var parentParentScore=0;
       grandParent.children("[contentScore]").each(function(){
         parentParentScore+=parseFloat(jQuery(this).attr("contentScore"));
       });
-      grandParent.attr("contentScore",parentParentScore);
+
+      grandParent.attr("contentScore",parentParentScore/2);
       return parseFloat(contentScore);
     },
+
     getCandidateAbstract:function(maxLength){
       var abstr= jQuery(this).clone();
       var cleanAbstr= abstr.html() ? abstr.html().replace(/\n/g,"").replace(/<br>/g,"\n") : "";
       abstr.html(cleanAbstr);
-      var str= jQuery("<p>"+abstr.text().trim().substring(0,maxLength).replace(/\n/g,"<br>")+" ...</p>");
+      maxLength = abstr.text().length>maxLength ? maxLength : abstr.text().length-1;
+      var txt = abstr.text();
+      txt = txt.substring(0,maxLength);
+      var str= jQuery("<p>"+txt.replace(/\n/g,"<br>")+" ...</p>");
 
       str.contents().filter(function() {
         return this.nodeType == 3;
       })
-        .wrap('<p></p>')
-        .end()
-        .filter('br')
-        .remove();
-
+          .wrap('<p></p>')
+          .end()
+          .filter('br')
+          .remove();
       return str;
     }
   };
@@ -278,13 +287,35 @@
   jQuery.fn.mbArticolize= jQuery.mbArticolize.articolize;
 
   jQuery.fn.tagName = function() {
-    if(this.get(0).nodeType == 3)
+    if(this.get(0) && this.get(0).nodeType ==3)
       return "TEXTNODE";
-    else if (this.get(0).nodeType ==1)
+    else if (this.get(0) && this.get(0).nodeType ==1)
       return this.get(0).tagName.toUpperCase();
     else return "COMMENT"
   };
 
+  jQuery.fn.buildArticolizeGallery=function(){
+    jQuery(".mbImgClone").remove();
+    this.each(function(){
+      jQuery(this).wrap("<div class='mbImgWrapper'/>");
+      var $el= jQuery(this).parent();
+      $el.click(
+               function(){
+                 var t= $el.position().top;
+                 var l= $el.position().left;
+                 jQuery(this).css({position:""}).removeClass("mbImgHover");
+                 jQuery(document).unbind("click.removeClone");
+                 jQuery(".mbImgClone").remove();
+                 var $elClone= $el.clone().addClass("mbImgClone").css({width:$el.outerWidth()}).bind("click",function(){jQuery(".mbImgClone").remove();});
+                 $el.parent().prepend($elClone);
+                 $elClone.css({top:t, left:l});
+                 $elClone.animate({width:$el.children().outerWidth(),height:$el.children().outerHeight()},200, function(){jQuery(document).one("click.removeClone",function(){jQuery(".mbImgClone").remove();})})}
+          )
+          .hover(function(){jQuery(this).addClass("mbImgHover")},function(){jQuery(this).removeClass("mbImgHover")})
+    })
+  };
+
+/*
   jQuery.fn.buildArticolizeGallery=function(){
     jQuery(".mbImgClone").remove();
     this.each(function(){
@@ -304,59 +335,90 @@
         .hover(function(){jQuery(this).addClass("mbImgHover")},function(){jQuery(this).removeClass("mbImgHover")})
     })
   };
+*/
 
-  jQuery.fn.getImgPlaceHolder=function(placeHolderURL){
-    if(placeHolderURL)
-      this.attr({width:150,height:150, src:placeHolderURL});
-    else
-      this.remove();
-  };
 
-jQuery.fn.normalizeUrl=function(baseURL){
-  if(!baseURL) return;
-  var splitURL=baseURL.split("/");
-  var rootUrl= splitURL[0]+"//"+splitURL[2];
+  jQuery.fn.normalizeUrl=function(baseURL, attributeName){
 
-  this.each(function(){
-    var imgPath=jQuery(this).attr("src");
+    if(!baseURL) return;
 
-    var isAbsolute= imgPath.beginsWith("http");
-    var isAbsoluteToRoot= imgPath.beginsWith("/");
-    var isRelative = !isAbsolute && !isAbsoluteToRoot;
+    //    baseURL=decodeURI(baseURL);
 
-    if(isAbsolute) return;
+    var splitURL=baseURL.split("/");
+    var rootUrl= splitURL[0]+"//"+splitURL[2];
+    var fileExtension= /.htm|.html|.xhtml|.php|.asp|.aspx|.jsp|.jspx|.jhtml|.lasso|.mspx|.page/i;
+
+    this.each(function() {
+      var url=jQuery(this).attr(attributeName);
+
+      if($.browser.msie && "href"==attributeName && url){
+        url = url.replace("http://licorize.net/read/", "").replace("http://licorize.com/read/", "");
+      }
+      if (!url) return;
+
+      var isAbsolute= url.beginsWith("http");
+      var isAbsoluteToRoot= url.beginsWith("/");
+      var isRelative = !isAbsolute && !isAbsoluteToRoot;
+
+      if(isAbsolute)
+        return jQuery(this).attr(attributeName, url);
 
       if(isAbsoluteToRoot)
-        jQuery(this).attr("src",rootUrl+imgPath);
+        jQuery(this).attr(attributeName, rootUrl+url);
 
-    if(isRelative){
-      var path=baseURL+"/";
-
-      if(splitURL[splitURL.length-1].indexOf(".")>=-1) {
+      if(isRelative){
+        var path=baseURL+ (baseURL.endsWith("/") ? "" : "/" );
         path=splitURL[0]+"//";
-          var up=imgPath.beginsWith("../")?countConsecutiveOccurrences("../",imgPath):1;
-          imgPath.replace("../","");
-          for (var i=2; i<splitURL.length-up; i++){
-          path+=splitURL[i]+"/";
-        }
-      }
-      jQuery(this).attr("src",path+imgPath);
-        return this;
-    }
-  });
+        var up=url.beginsWith("../") ? countConsecutiveOccurrences("../",url, attributeName) : fileExtension.test(splitURL[splitURL.length-1])?1:0;
 
-    function countConsecutiveOccurrences(pattern, target) {
-      var result = 0;
-      var pl = pattern.length();
-      for (var i = 0; i < target.length(); i = i + pl) {
-        if (!target.substring(i, i + pl)==pattern)
-          break;
-        result++;
+        url.replace("../","");
+        for (var i=2; i<splitURL.length-up; i++){
+          var u = splitURL[i];
+          if(u)
+            path+= u + (u.endsWith("/") ? "" : "/");
+        }
+        jQuery(this).attr(attributeName,path+url);
+        jQuery(this).attr("origUrlsrc",path+url);
+        return this;
       }
+    });
+
+    function countConsecutiveOccurrences(pattern, url, attributeName) {
+      var result = 0;
+      var pl = pattern.length;
+
+      for (var i = 0; i < url.length; i = i + pl) {
+        var p = url.substring(i, i + pl);
+
+        if($.browser.msie && "href"==attributeName)
+          if (p==pattern)
+            result++;
+      }
+
       return result;
     }
+  };
 
-};
+  // string tools
+
+  String.prototype.beginsWith = function(t, i) {
+    if (!i) {
+      return (t == this.substring(0, t.length));
+    } else {
+      return (t.toLowerCase() == this.substring(0, t.length).toLowerCase());
+    }
+  };
+
+  String.prototype.endsWith = function(t, i) {
+    if (!i) {
+      return (t == this.substring(this.length - t.length));
+    } else {
+      return (t.toLowerCase() == this.substring(this.length - t.length).toLowerCase()); }
+  };
+
+  String.prototype.asId = function () {
+    return this.replace(/[^a-zA-Z0-9_]+/g, '');
+  };
 
 
 })(jQuery);
