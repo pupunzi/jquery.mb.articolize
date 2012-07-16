@@ -78,12 +78,8 @@
 
     function render(){
       var text=$("#htmlContent").val();
-<<<<<<< HEAD
- //     var article=$(text).mbArticolize({abstractLength:350, removeImagesFromHtml:false});
-      var article=$.mbArticolize.articolize({text:text,abstractLength:350, removeImagesFromHtml:true});
-=======
+
       var article=$.mbArticolize.articolize({text:text,abstractLength:350, removeImagesFromHtml:false, simplified:$("#check").attr('checked')});
->>>>>>> fix
 
       $("#renderZone").html("").append("<h2>"+article.title+"</h2>").append(article.candidate);
       $("#abstractZone").html("");
