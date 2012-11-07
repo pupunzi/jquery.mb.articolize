@@ -61,7 +61,6 @@
       page.video=articleHTML.find("embed, object").filter(function(){return jQuery(this).get(0).innerHTML.search(jQuery.mbArticolize.regexps.videoRe) != -1}).clone();
       articleHTML.find("embed, object").filter(function(){return jQuery(this).get(0).innerHTML.search(jQuery.mbArticolize.regexps.videoRe) == -1}).remove();
 
-
       var imgsURL=[];
       var articleImages= articleHTML.find("img");
 
@@ -71,9 +70,9 @@
         var getImg=img;
         if(img.attr("mbSrc") && img.attr("mbSrc").search(jQuery.mbArticolize.regexps.negativeImgNames) != -1)
           getImg=null;
-        if(img.attr("height") && img.attr("height")<100)
+        if(img.attr("height") && img.attr("height")<350)
           getImg=null;
-        if(img.attr('width') && (img.attr('width')<100))
+        if(img.attr('width') && (img.attr('width')<350))
           getImg=null;
         if(getImg!=null)
           img.normalizeUrl(options.baseUrl, "mbSrc");
@@ -95,7 +94,7 @@
         img.css("display","none");
         img.error(function(){jQuery(this).parent(".mbImgWrapper").remove();});
         img.load(function(){
-          if (jQuery(this).width()<100 && jQuery(this).height()<100) {
+          if (jQuery(this).width()<350 || jQuery(this).height()<350) {
             jQuery(this).parent(".mbImgWrapper").remove();
             return;
           }
@@ -336,29 +335,6 @@
     else return "COMMENT"
   };
 
-  /*
-   jQuery.fn.buildArticolizeGallery=function(){
-   jQuery(".mbImgClone").remove();
-   this.each(function(){
-   jQuery(this).wrap("<div class='mbImgWrapper'/>");
-   var $el= jQuery(this).parent();
-   $el.click(
-   function(){
-   var t= $el.position().top;
-   var l= $el.position().left;
-   jQuery(this).css({position:""}).removeClass("mbImgHover");
-   jQuery(document).unbind("click.removeClone");
-   jQuery(".mbImgClone").remove();
-   var $elClone= $el.clone().addClass("mbImgClone").css({width:$el.outerWidth()}).bind("click",function(){jQuery(".mbImgClone").remove();});
-   $el.parent().prepend($elClone);
-   $elClone.css({top:t, left:l});
-   $elClone.animate({width:$el.children().outerWidth(),height:$el.children().outerHeight()},200, function(){jQuery(document).one("click.removeClone",function(){jQuery(".mbImgClone").remove();})})}
-   )
-   .hover(function(){jQuery(this).addClass("mbImgHover")},function(){jQuery(this).removeClass("mbImgHover")})
-   })
-   };
-   */
-
   jQuery.fn.buildArticolizeGallery=function(){
     jQuery(".mbImgClone").remove();
     this.each(function(){
@@ -392,10 +368,6 @@
 
     this.each(function() {
       var url=jQuery(this).attr(attributeName);
-
-      if(jQuery.browser.msie && "href"==attributeName && url){
-        url = url.replace("http://licorize.net/read/", "").replace("http://licorize.com/read/", "");
-      }
       if (!url) return;
 
       var isAbsolute= url.beginsWith("http");
