@@ -19,6 +19,11 @@
   <script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1/jquery.js"></script>
   <script type="text/javascript" src="inc/jquery.mb.articolize.js"></script>
   <style type="text/css">
+
+		*{
+			float: none;
+		}
+
     body{
       width:700px;
       margin:auto;
@@ -72,6 +77,13 @@
     pre{
       white-space:normal;
     }
+
+		img{
+			display: block;
+			max-width: 100%;
+			margin-bottom: 20px;
+		}
+
   </style>
 
   <script type="text/javascript">
@@ -85,8 +97,8 @@
       $("#abstractZone").html("");
       $("#abstractZone").append("<h2>"+article.title+"</h2>");
       $("#abstractZone").append(article.images.filter(function(i){return i<15}));
-      $(article.images).buildArticolizeGallery();
-      $("#abstractZone").append(article.video);
+      //$(article.images).buildArticolizeGallery();
+      //$("#abstractZone").append(article.video);
       $("#abstractZone").append(article.candidateAbstract);
     }
   </script>
@@ -100,7 +112,6 @@ Copy the surce of any web-page and paste it here:
 <br>
 <textarea id="htmlContent" style="width:450px;height:250px"></textarea><br>
 <button id="renderer" onclick="render()">render</button>
-
 <div id="abstractZone"></div>
 <div id="renderZone"></div>
 

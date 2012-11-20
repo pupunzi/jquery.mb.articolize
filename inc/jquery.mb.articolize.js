@@ -3,13 +3,12 @@
   jQuery.mbArticolize={
     name:"mb.articolize",
     author:"Matteo Bicocchi",
-    version:"0.1",
+    version:"1.0",
     regexps: {
-      tagToRemove:            /base|iframe|script|style|meta|input|textarea|select|option/i, //embed|object|
-      hasNotRelevantChildren: /<(blockquote|dl|div|img|ol|p|pre|table)/i,
+      tagToRemove:            /base|iframe|script|noscript|style|meta|input|textarea|select|option|nav|header|aside|summary|footer|embed|object|svg|MM:MEMCACHED/i, //embed|object|
       videoRe:                /http:\/\/(www\.)?(youtube|vimeo)\.com/i,
-      negativeRe:             /combx|sponsor|comment|contact|foot|footer|header|footnote|link|media|socials|meta|promo|discussion|related|scroll|shoutbox|sponsor|widget|hidden|language|menu|navbar|contentRight|right|rightcontent|adsense|sidebar|info|sociable|share|topbar|jump|breadcrumb|leftnav|nav|maindx|mainsx|spalla|col-C|from-section|functions/i,
-      negativeImgNames:       /email|marker|main|separator|spacer|spaceball|bgnd|smile|background|_bg|-bg|head|foot|emot|adver|line|dott|thumb|top|bottom|sidebar|blank|null|holder|btn|button|title|basket|avatar|banner/i
+      negativeRe:             /combx|header|sponsor|comment|respond|comment|banner|contact|foot|footer|header|bottom|side|footnote|link|media|socials|meta|promo|discussion|related|scroll|shoutbox|sponsor|hidden|language|menu|navbar|contentRight|rightcontent|adsense|Advertis|sidebar|info|sociable|topbar|jump|breadcrumb|leftnav|nav|maindx|mainsx|spalla|col-C|from-section|functions|twitter|facebook|submission|follow|articles-charts|breadcrumb|utility|bnnr|jp-post-flair|feed/i, //share|form
+      negativeImgNames:       /email|marker|main|separator|spacer|spaceball|bgnd|smile|background|_bg|-bg|head|foot|emot|adv|line|dott|thumb|top|bottom|sidebar|blank|null|holder|btn|button|title|basket|avatar|banner/i
     },
     defaults:{
       imagesPlaceHolder:null,
@@ -18,9 +17,7 @@
       removeImagesFromHtml:false,
       baseUrl:false
     },
-
-    totalScore:0,
-    articolize:function(opt){
+    articolize:function(opt) {
       var page= new Object();
       var options={};
       jQuery.extend(options,jQuery.mbArticolize.defaults,opt);
@@ -42,100 +39,82 @@
         .replace(/src=/gi, 'mbSrc=')
         .replace(/face=/gi, 'mbFace=');
 
+
+
       articleHTML= jQuery(content);
-      articleHTML.find("script,style,iframe").remove();
-      var articleTitle="";
 
-      if (typeof articleHTML.toArray == "function")
-        jQuery.each(articleHTML.toArray(),function(i) {
-
-          if(this.tagName && this.tagName.toLowerCase()=="title"){
-            articleTitle=this.innerHTML;
-          }
-
-          if(this.tagName && this.tagName.toLowerCase().search(jQuery.mbArticolize.regexps.tagToRemove) != -1){
-            articleHTML.splice(jQuery.inArray(this,articleHTML),1);
-          }
-        });
+      for (var i in articleHTML){
+        if(articleHTML[i].tagName && articleHTML[i].tagName.toLowerCase() === "title"){
+          page.title = articleHTML[i].innerHTML;
+          break;
+        }
+      }
 
       page.video=articleHTML.find("embed, object").filter(function(){return jQuery(this).get(0).innerHTML.search(jQuery.mbArticolize.regexps.videoRe) != -1}).clone();
-      articleHTML.find("embed, object").filter(function(){return jQuery(this).get(0).innerHTML.search(jQuery.mbArticolize.regexps.videoRe) == -1}).remove();
 
       var imgsURL=[];
       var articleImages= articleHTML.find("img");
 
-      page.images= articleImages
-        .filter(function(){
-        var img=jQuery(this);
-        var getImg=img;
-        if(img.attr("mbSrc") && img.attr("mbSrc").search(jQuery.mbArticolize.regexps.negativeImgNames) != -1)
-          getImg=null;
-        if(img.attr("height") && img.attr("height")<350)
-          getImg=null;
-        if(img.attr('width') && (img.attr('width')<350))
-          getImg=null;
-        if(getImg!=null)
-          img.normalizeUrl(options.baseUrl, "mbSrc");
-        return getImg;
-      }).clone();
-
-      page.images.each(function() {
-
-        var img=jQuery(this);
-
-        //if this image is already taken, remove it.
-        if(jQuery.inArray(img.attr("mbSrc"),imgsURL)) {
-          img.remove();
-        }
-        imgsURL.push(img.attr("mbSrc"));
-
-        img.normalizeUrl(options.baseUrl, "mbSrc");
-        img.attr("src",img.attr("mbSrc"));
-        img.css("display","none");
-        img.error(function(){jQuery(this).parent(".mbImgWrapper").remove();});
-        img.load(function(){
-          if (jQuery(this).width()<350 || jQuery(this).height()<350) {
-            jQuery(this).parent(".mbImgWrapper").remove();
-            return;
-          }
-          jQuery(this).fadeIn(500);
-        });
-        img.removeAttr("border").removeAttr("style").removeAttr("usemap");
-      });
-
       //clean images inside article text
       articleImages.each(function() {
-
         var img=jQuery(this);
-
         if(img.attr("mbSrc") && img.attr("mbSrc").beginsWith("./")) {
           img.remove();
           return;
         }
+
+        if(img.attr("height") && img.attr("height")<350)
+          img.remove();
+
+        if(img.attr('width') && (img.attr('width')<350))
+          img.remove();
+
+        if(img.attr("mbSrc") && img.attr("mbSrc").search(jQuery.mbArticolize.regexps.negativeImgNames) != -1)
+          img.remove();
+
         img.normalizeUrl(options.baseUrl, "mbSrc");
         img.attr("src",img.attr("mbSrc"));
+
       });
+      page.images= articleImages.clone();
+      page.candidate = articleHTML.findCandidate(options);
 
-      page.title= articleTitle;
-      page.title= page.title ? page.title : articleHTML.find("h1:first").clone().text();
+      jQuery(page.candidate).find("*").each(function(){
 
-      page.candidate= articleHTML.findCandidate(options);
+        if(!jQuery(this).mbIsValidTag()){
+          jQuery(this).remove();
+          return;
+        }
 
-      page.title= page.title ? page.title : page.candidate? page.candidate.find("h1:first").text():"";
-      page.title= page.title ? page.title : page.candidate? page.candidate.find("h2:first").text():"";
+        if(!jQuery(this).is("img") && jQuery(this).text() && jQuery(this).text().length<15 && jQuery.mbArticolize.regexps.negativeRe.test(jQuery(this).text())){
+          jQuery(this).remove();
+          return;
+        }
 
-      if(page.candidate) {
-        page.candidate.find('a').each(function(){
+        if(this.nodeType == 8){
+          jQuery(this).remove();
+          return;
+        }
+
+        if (this.nodeName == "A"){
           if(jQuery(this).attr("href") && jQuery(this).attr("href").indexOf("javascript")!=-1){
             jQuery(this).remove();
             return;
           }
           jQuery(this).normalizeUrl(options.baseUrl, "href");
+        }
+      });
 
-        });
-      }
+      jQuery(page.candidate).find("*:empty").not("img,br").remove();
+
+      if(jQuery(page.candidate).length)
+        jQuery(page.candidate).cleanContent(opt);
+
+      page.title= page.title ? page.title : page.candidate ? page.candidate.find("h1:first").text():"";
+      page.candidate.find("h1:first").remove();
 
       page.candidateAbstract= page.candidate? page.candidate.getCandidateAbstract(options.abstractLength):"";
+
       if(page.candidate && options.removeImagesFromHtml)
         page.candidate.find("img").remove();
       return page;
@@ -145,32 +124,32 @@
 
     findCandidate:function(opt){
       var content= this;
-
       var candidates={};
 
       var divs=content.find("div");
       divs.each(function(i){
-        if( ! jQuery(this).mbIsValidTag()) return;
-        var innerH=jQuery(this).contents().filter(function() {return this.nodeType == 3 && this.length>200; });
-        if(innerH.parent().length>0 && innerH.parent().html().length>200 && innerH.parent().mbIsValidTag()){
-
+        if( !jQuery(this).mbIsValidTag()){
+          jQuery(this).remove();
+          return;
+        }
+        var innerH=jQuery(this).contents().filter(function() {return this.nodeType == 3 && this.length>50; });
+        if(innerH.parent().length>0 && innerH.parent().html().length>50 && innerH.parent().mbIsValidTag()){
           jQuery(this).wrap("<p class='wrap'/>");
+        }else{
+          delete this;
         }
       });
-      divs.filter(function(){return !$(this).mbIsValidTag()}).remove();
+      var tds=jQuery("<div/>");
 
-      var tds=$("<div/>");
       content.find("td").each(function(){
-        //var innerH=jQuery(this).contents().filter(function() { return this.nodeType == 3; });
-        //if(innerH.parent().length>0 && innerH.parent().html().length>200){
-          var rep=jQuery("<p/>").html(jQuery(this).html());
-          tds.add(rep);
-          jQuery(this).parents("table").eq(0).before(rep);
-        //}
+        var rep=jQuery("<span/>").html(jQuery(this).html());
+        tds.add(rep);
+        jQuery(this).parents("table").eq(0).before(rep);
       });
 
+
       var p=content.find("p").filter(function(i){return i<100 && jQuery(this).text().length>10});
-      var div= divs.filter(function(){return $(this).contents().is("h1,h2,h3")});
+      var div= divs.filter(function(){return jQuery(this).contents().is("h1,h2,h3") || jQuery(this).text().length > 3000 });
       candidates = p.add(div);
       candidates.add(tds);
 
@@ -180,56 +159,46 @@
       if(candidates.parent().length==0)
         candidates.wrapAll("<div/>");
 
-      /*
-       candidates.each(function(){
-       jQuery(this).cleanContent(opt);
-       jQuery(this).addContentScore();
-       });
-       */
-
-      var bestCandidates= candidates.parent().cleanContent(opt);
-      //var bestCandidates= content.find("[contentScore]");
-
+      var bestCandidates= candidates.parent();
       var candidate=bestCandidates.eq(0);
 
       bestCandidates.each(function(){
-
         if (!jQuery(this).mbIsValidTag() || ( jQuery(this).parent() && !jQuery(this).parent().mbIsValidTag()))
           return;
 
         var newCandidate= jQuery(this);
-
         candidate= newCandidate.text().length>candidate.text().length ? newCandidate : candidate;
-        //candidate=parseFloat(newCandidate.attr("contentScore")) > parseFloat(candidate.attr("contentScore")) ? newCandidate : candidate;
       });
       candidate=candidate.text().length>100 ?candidate : null;
-      //content.remove();
-
       return candidate;
     },
+
     isValidTag:function(){
       var isValid=true;
-      if (jQuery.mbArticolize.regexps.negativeRe.test(jQuery(this).attr("class"))
-        || jQuery.mbArticolize.regexps.negativeRe.test(jQuery(this).attr("id")))
+      if (
+        (this.attr("class") && jQuery.mbArticolize.regexps.negativeRe.test(this.attr("class").toLowerCase()))
+          || (this.attr("id") && jQuery.mbArticolize.regexps.negativeRe.test(this.attr("id").toLowerCase()))
+          || (this.attr("role") && jQuery.mbArticolize.regexps.negativeRe.test(this.attr("role").toLowerCase()))
+          || (this.getTagName() && jQuery.mbArticolize.regexps.tagToRemove.test(this.getTagName().toLowerCase()))
+//          || (this.nodeType == 3 && this.text().length<20 && jQuery.mbArticolize.regexps.negativeRe.test(this.text()))
+        )
         isValid=false;
-
       return isValid;
     },
 
     cleanContent: function (opt){
       var content= this;
-      content.find('script,iframe,select,option,input,canvas,fieldset,button,table,tr,td').remove();/*hr,ol,ul,li,br,table,tr,td,style*/
-      content.find("[id]").filter(function(){return jQuery.mbArticolize.regexps.negativeRe.test(jQuery(this).attr("id"))}).remove();
-      content.find("[class]").filter(function(){return jQuery.mbArticolize.regexps.negativeRe.test(jQuery(this).attr("class"))}).remove();
-      content.find("[class]").removeAttr("class");
+      content.find('script,noscript,iframe,select,option,input,canvas,fieldset,button,table,tbody,th,tr,td').remove();/*hr,ol,ul,li,br,table,tr,td,style*/
+      content.find("[id]").filter(function(){return jQuery.mbArticolize.regexps.negativeRe.test(this.id)}).remove();
+      content.find("[class]").filter(function(){return jQuery.mbArticolize.regexps.negativeRe.test(this.class)}).remove();
       content.find("[color]").removeAttr("color");
+      content.find("[class]").removeAttr("class");
       content.find("[style]").removeAttr("style");
       content.find("[width]").removeAttr('width');
       content.find("[height]").removeAttr('height');
       content.find("[size]").removeAttr('size');
       content.find("a").attr('target','_blank');
-      content.find("div,p,span,li,ol").filter(function(){return jQuery(this).is(":empty")}).remove();/*ol,li,*/
-
+      content.find("div,p,span,li,ol").filter(function(){return jQuery(this).is(":empty")}).remove();
       return content;
     },
 
@@ -239,7 +208,7 @@
       var content= node.html();
       var contentScore= node.attr("contentScore") && node.attr("contentScore")>0?parseFloat(node.attr("contentScore")):0;
 
-      switch(parent.tagName()) {
+      switch(parent.getTagName()) {
         case 'DIV':
           contentScore += 5;
           break;
@@ -273,7 +242,7 @@
       }
 
       /* For every li containing a link remove 5 points */
-      contentScore += node.tagName()=="DIV"?node.find("img").length*5:0;
+      contentScore += node.getTagName()=="DIV"?node.find("img").length*5:0;
       /* For every 100 characters in this paragraph, add another point. Up to 5 points. */
       contentScore += Math.min(Math.floor(node.text().length / 100));//, 5
 
@@ -327,7 +296,7 @@
   jQuery.fn.mbArticolize= jQuery.mbArticolize.articolize;
   jQuery.fn.mbIsValidTag= jQuery.mbArticolize.isValidTag;
 
-  jQuery.fn.tagName = function() {
+  jQuery.fn.getTagName = function() {
     if(this.get(0) && this.get(0).nodeType ==3)
       return "TEXTNODE";
     else if (this.get(0) && this.get(0).nodeType ==1)
@@ -350,7 +319,7 @@
           $el.parent().append($elClone);
           $elClone.css({top:t, left:l});
           $elClone.animate({width:$el.children().outerWidth(),height:$el.children().outerHeight()},200, function(){jQuery(document).one("click.removeClone",function(){jQuery(".mbImgClone").remove();})})}
-        )
+      )
         .hover(function(){jQuery(this).addClass("mbImgHover")},function(){jQuery(this).removeClass("mbImgHover")})
     })
   };
@@ -358,7 +327,7 @@
 
   jQuery.fn.normalizeUrl=function(baseURL, attributeName){
 
-    if(!baseURL) return;
+    if(!baseURL) return this;
 
     //    baseURL=decodeURI(baseURL);
 
