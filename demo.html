@@ -16,101 +16,108 @@
   ~  http://www.opensource.org/licenses/mit-license.php
   ~  http://www.gnu.org/licenses/gpl.html
   ~
-  ~  last modified: 04/01/13 17.13
+  ~  last modified: 25/10/13 19.17
   ~  ******************************************************************************/
   -->
 
 <html>
 <head>
-  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-  <title>mb.articolize</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <title>mb.articolize</title>
 
-  <script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1/jquery.js"></script>
-  <script type="text/javascript" src="inc/jquery.mb.articolize.js"></script>
-  <style type="text/css">
+    <script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1/jquery.js"></script>
+    <script type="text/javascript" src="inc/jquery.mb.articolize.js"></script>
+    <style type="text/css">
 
-		*{
-			float: none;
-		}
+        *{
+            float: none;
+        }
 
-    body{
-      width:700px;
-      margin:auto;
-      padding:20px;
-    }
-    a{
-      color:#999999;
-      text-decoration:none;
-    }
-    a:hover{
-      color:#999999;
-      text-decoration:underline;
-    }
-    #renderZone{
-      font:12px/16px georgia, serif;
-      padding:10px;
-      background:#f3f3f3;
-    }
+        body{
+            width:700px;
+            margin:auto;
+            padding:20px;
+        }
 
-    #abstractZone{
-      background:#e7e4b6;
-      margin-top:5px;
-      padding:10px;
-    }
-    .mbImgWrapper{
-      width:20%;
-      height:120px;
-      overflow:hidden;
-      display:inline-block;
-      cursor:pointer;
-      background:black;
-      vertical-align:top;
-        position:relative;
-    }
-    .mbImgClone{
-      -moz-box-shadow:#000 1px 1px 10px;
-      -webkit-box-shadow:#000 1px 1px 10px;
-      box-shadow:#000 1px 1px 10px;
-      position:absolute;
-      
-      z-index:2;
-      white-space:normal;
-    }
-    .mbImgHover{
-      -moz-box-shadow:#000 1px 1px 10px;
-      -webkit-box-shadow:#000 1px 1px 10px;
-      box-shadow:#000 1px 1px 10px;
-      position:relative;
-      z-index:1;
-    }
-    pre{
-      white-space:normal;
-    }
+        a{
+            color:#999999;
+            text-decoration:none;
+        }
 
-		img{
-			display: block;
-			max-width: 100%;
-			margin-bottom: 20px;
-		}
+        a:hover{
+            color:#999999;
+            text-decoration:underline;
+        }
 
-  </style>
+        #renderZone{
+            font:12px/16px georgia, serif;
+            padding:10px;
+            background:#f3f3f3;
+        }
 
-  <script type="text/javascript">
+        #abstractZone{
+            background:#e7e4b6;
+            margin-top:5px;
+            padding:10px;
+        }
 
-    function render(){
-      var text=$("#htmlContent").val();
+        .mbImgWrapper{
+            width:20%;
+            height:120px;
+            overflow:hidden;
+            display:inline-block;
+            cursor:pointer;
+            background:black;
+            vertical-align:top;
+            position:relative;
+        }
 
-      var article=$.mbArticolize.articolize({text:text,abstractLength:350, removeImagesFromHtml:false, simplified:$("#check").attr('checked')});
+        .mbImgClone{
+            -moz-box-shadow:#000 1px 1px 10px;
+            -webkit-box-shadow:#000 1px 1px 10px;
+            box-shadow:#000 1px 1px 10px;
+            position:absolute;
 
-      $("#renderZone").html("").append("<h2>"+article.title+"</h2>").append(article.candidate);
-      $("#abstractZone").html("");
-      $("#abstractZone").append("<h2>"+article.title+"</h2>");
-      $("#abstractZone").append(article.images.filter(function(i){return i<15}));
-      //$(article.images).buildArticolizeGallery();
-      //$("#abstractZone").append(article.video);
-      $("#abstractZone").append(article.candidateAbstract);
-    }
-  </script>
+            z-index:2;
+            white-space:normal;
+        }
+
+        .mbImgHover{
+            -moz-box-shadow:#000 1px 1px 10px;
+            -webkit-box-shadow:#000 1px 1px 10px;
+            box-shadow:#000 1px 1px 10px;
+            position:relative;
+            z-index:1;
+        }
+
+        pre{
+            white-space:normal;
+        }
+
+        img{
+            display: block;
+            max-width: 100%;
+            margin-bottom: 20px;
+        }
+
+    </style>
+
+    <script type="text/javascript">
+
+        function render(){
+            var text = $("#htmlContent").val();
+
+            var article = $.mbArticolize.articolize({text:text,abstractLength:350, removeImagesFromHtml:false, simplified:$("#check").attr('checked')});
+
+            $("#renderZone").html("").append("<h2>"+article.title+"</h2>").append(article.candidate);
+            $("#abstractZone").html("");
+            $("#abstractZone").append("<h2>"+article.title+"</h2>");
+            $("#abstractZone").append(article.images.filter(function(i){return i<15}));
+            //$(article.images).buildArticolizeGallery();
+            //$("#abstractZone").append(article.video);
+            $("#abstractZone").append(article.candidateAbstract);
+        }
+    </script>
 
 </head>
 <body class="home">
